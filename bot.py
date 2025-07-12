@@ -11,7 +11,6 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-# تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -23,20 +22,16 @@ WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 CHANNEL_USERNAME = "p2p_LRN"
 
-# إعداد البوت
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# جلسة aiohttp واحدة على مستوى التطبيق
 session: aiohttp.ClientSession = None
 
-# تحميل المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# خريطة الكلمات المفتاحية
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -132,7 +127,6 @@ async def answer_question(msg: types.Message):
     except Exception as e:
         await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
 
-# إغلاق الجلسة عند إغلاق السيرفر
 async def on_shutdown(app: web.Application):
     global session
     if session:
@@ -155,6 +149,8 @@ async def main():
 
     await bot.set_webhook(WEBHOOK_URL)
     print(f"✅ Webhook شغال على: {WEBHOOK_URL}")
+
+    await asyncio.Event().wait()  # هذا السطر يمنع انتهاء البرنامج ويخلي البوت شغال دايمًا
 
 if __name__ == "__main__":
     asyncio.run(main())
