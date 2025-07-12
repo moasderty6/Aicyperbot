@@ -22,20 +22,16 @@ WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 CHANNEL_USERNAME = "p2p_LRN"
 
-# البوت وجميع المكونات
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# جلسة HTTP
 session: aiohttp.ClientSession = None
 
-# تحميل مصادر التعليم
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# كلمات مفتاحية
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -109,7 +105,7 @@ async def handle_question(msg: types.Message):
     try:
         headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
         payload = {
-            "model": "gpt-4o",
+            "model": "gpt-4.1",
             "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
             "temperature": 0.7
         }
@@ -129,14 +125,12 @@ async def handle_question(msg: types.Message):
     except Exception as e:
         await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
 
-# إغلاق الجلسات عند إطفاء السيرفر
 async def on_shutdown(app: web.Application):
     global session
     if session:
         await session.close()
     await bot.session.close()
 
-# إطلاق السيرفر وبوت التيليغرام
 async def main():
     global session
     session = aiohttp.ClientSession()
