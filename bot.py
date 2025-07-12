@@ -102,6 +102,9 @@ async def handle_question(msg: types.Message):
     question = msg.text.strip()
     topic = find_topic(question)
 
+    # إرسال رسالة انتظار أنيقة
+    waiting_message = await msg.answer("⌛ *يرجى الانتظار...*\nأقوم بتحليل سؤالك للحصول على أفضل إجابة ممكنة 🤖")
+
     try:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
@@ -130,10 +133,10 @@ async def handle_question(msg: types.Message):
                 for item in sources_db[topic]:
                     response += f"- [{item['title']}]({item['url']})\n"
 
-            await msg.answer(response)
+            await waiting_message.edit_text(response)
 
     except Exception as e:
-        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`")
+        await waiting_message.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`")
 
 async def on_shutdown(app: web.Application):
     global session
