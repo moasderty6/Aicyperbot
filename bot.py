@@ -59,7 +59,7 @@ async def is_subscribed(user_id: int):
     try:
         member = await bot.get_chat_member(f"@{CHANNEL_USERNAME}", user_id)
         return member.status != "left"
-    except:
+    except Exception:
         return False
 
 @router.message(Command("start"))
@@ -71,7 +71,10 @@ async def start_handler(msg: types.Message):
         await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
 
-    await msg.answer("👋 مرحبًا بك! أرسل سؤالك في مجال الأمن السيبراني وسأجيبك بمساعدة الذكاء الاصطناعي.\n\nاستخدم /sources للاطلاع على المصادر.")
+    await msg.answer(
+        "👋 مرحبًا بك! أرسل سؤالك في مجال الأمن السيبراني وسأجيبك بمساعدة الذكاء الاصطناعي.\n\n"
+        "استخدم /sources للاطلاع على المصادر."
+    )
 
 @router.message(Command("sources"))
 async def show_sources(msg: types.Message):
@@ -150,7 +153,7 @@ async def main():
     await bot.set_webhook(WEBHOOK_URL)
     print(f"✅ Webhook شغال على: {WEBHOOK_URL}")
 
-    await asyncio.Event().wait()  # هذا السطر يمنع انتهاء البرنامج ويخلي البوت شغال دايمًا
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     asyncio.run(main())
