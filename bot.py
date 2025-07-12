@@ -6,12 +6,15 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.executor import start_webhook
 import openai
 import aiohttp
+from dotenv import load_dotenv
 
-API_TOKEN = os.getenv('BOT_TOKEN')  # استيراد التوكن من متغير بيئة
+load_dotenv()
+
+API_TOKEN = os.getenv('BOT_TOKEN')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 CHANNEL_USERNAME = "p2p_LRN"
 
-WEBHOOK_HOST = os.getenv('WEBHOOK_HOST')  # مثل https://yourdomain.com
+WEBHOOK_HOST = os.getenv('WEBHOOK_HOST')
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
@@ -56,101 +59,71 @@ async def is_subscribed(user_id: int):
     try:
         member = await bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         return member.status != 'left'
-    except Exception:
+    except:
         return False
 
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
-    subscribed = await is_subscribed(message.from_user.id)
-    if not subscribed:
-        keyboard = InlineKeyboardMarkup(row_width=1)
-        join_button = InlineKeyboardButton(text="اشترك في القناة أولاً", url=f"https://t.me/{CHANNEL_USERNAME}")
-        keyboard.add(join_button)
-        await message.reply(
-            "مرحبًا! يجب عليك الاشتراك في قناة @p2p_LRN لاستخدام هذا البوت.\n"
-            "اضغط على الزر أدناه للاشتراك ثم أعد إرسال /start.",
-            reply_markup=keyboard
-        )
+    if not await is_subscribed(message.from_user.id):
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton("اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}"))
+        await message.reply("يرجى الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
 
-    text = (
-        "مرحبًا! أنا بوت الأمن السيبراني الذكي.\n"
-        "اسألني أي سؤال في الأمن السيبراني وسأجيبك مع تقديم مصادر تعليمية مفيدة.\n\n"
-        "يمكنك أيضًا استخدام الأمر /sources لعرض جميع المصادر المتاحة."
-    )
-    await message.reply(text)
+    await message.reply("مرحبًا! اسألني أي سؤال عن الأمن السيبراني وسأجيبك مع مصادر تعليمية.")
 
 @dp.message_handler(commands=['sources'])
 async def send_sources_list(message: types.Message):
-    subscribed = await is_subscribed(message.from_user.id)
-    if not subscribed:
-        keyboard = InlineKeyboardMarkup(row_width=1)
-        join_button = InlineKeyboardButton(text="اشترك في القناة أولاً", url=f"https://t.me/{CHANNEL_USERNAME}")
-        keyboard.add(join_button)
-        await message.reply(
-            "عذرًا، يجب عليك الاشتراك في قناة @p2p_LRN لاستخدام هذا البوت.\n"
-            "اضغط على الزر للاشتراك ثم أعد إرسال /sources.",
-            reply_markup=keyboard
-        )
+    if not await is_subscribed(message.from_user.id):
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton("اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}"))
+        await message.reply("يرجى الاشتراك في القناة لاستخدام هذه الميزة.", reply_markup=keyboard)
         return
 
-    reply_text = "📚 *قائمة المصادر التعليمية المتاحة:* \n\n"
+    text = "📚 *قائمة المصادر المتاحة:*\n\n"
     for topic, sources in sources_db.items():
-        reply_text += f"🔹 *{topic}:*\n"
+        text += f"🔹 *{topic}*\n"
         for src in sources:
-            reply_text += f" - [{src['title']}]({src['url']})\n"
-        reply_text += "\n"
-    await message.reply(reply_text, parse_mode='Markdown')
+            text += f" - [{src['title']}]({src['url']})\n"
+        text += "\n"
+    await message.reply(text, parse_mode="Markdown")
 
 @dp.message_handler()
 async def handle_question(message: types.Message):
-    subscribed = await is_subscribed(message.from_user.id)
-    if not subscribed:
-        keyboard = InlineKeyboardMarkup(row_width=1)
-        join_button = InlineKeyboardButton(text="اشترك في القناة أولاً", url=f"https://t.me/{CHANNEL_USERNAME}")
-        keyboard.add(join_button)
-        await message.reply(
-            "عذرًا، يجب عليك الاشتراك في قناة @p2p_LRN لاستخدام هذا البوت.\n"
-            "اضغط على الزر للاشتراك ثم أعد إرسال رسالتك.",
-            reply_markup=keyboard
-        )
+    if not await is_subscribed(message.from_user.id):
+        keyboard = InlineKeyboardMarkup()
+        keyboard.add(InlineKeyboardButton("اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}"))
+        await message.reply("اشترك أولاً لمتابعة استخدام البوت.", reply_markup=keyboard)
         return
 
-    user_question = message.text.strip()
-    topic = find_topic(user_question)
-
-    prompt = f"أجب على هذا السؤال في الأمن السيبراني بشكل تعليمي وأخلاقي وباختصار: {user_question}"
+    question = message.text.strip()
+    topic = find_topic(question)
+    prompt = f"أجب بشكل تعليمي ومبسط عن: {question}"
 
     try:
         response = await openai.Completion.acreate(
-            engine="gpt-4o-mini",
+            engine="gpt-4o",
             prompt=prompt,
             max_tokens=500,
             temperature=0.7,
         )
         answer = response.choices[0].text.strip()
     except Exception as e:
-        await message.reply(f"حدث خطأ في الاتصال بـ OpenAI: {e}")
-        return
+        answer = f"حدث خطأ: {e}"
 
-    reply_text = f"💡 *الإجابة:*\n{answer}\n"
-
+    final = f"🔐 *الإجابة:*\n{answer}\n\n"
     if topic:
-        sources = get_sources(topic)
-        if sources:
-            reply_text += "\n📚 *مصادر تعليمية مفيدة:* \n"
-            for src in sources:
-                reply_text += f"- [{src['title']}]({src['url']})\n"
+        final += "📚 *مصادر إضافية:*\n"
+        for src in get_sources(topic):
+            final += f" - [{src['title']}]({src['url']})\n"
 
-    await message.reply(reply_text, parse_mode='Markdown')
+    await message.reply(final, parse_mode="Markdown")
 
 async def on_startup(dispatcher):
     await bot.set_webhook(WEBHOOK_URL)
-    print(f"Webhook set to {WEBHOOK_URL}")
 
 async def on_shutdown(dispatcher):
     await bot.delete_webhook()
-    print("Webhook deleted")
 
 if __name__ == '__main__':
     start_webhook(
