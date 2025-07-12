@@ -105,12 +105,10 @@ async def handle_question(msg: types.Message):
     try:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "HTTP-Referer": "https://t.me/p2p_LRN",  # اختياري إن أردت Track usage
-            "X-Title": "CyberBot"
         }
 
         payload = {
-            "model": "openrouter/auto",  # أو اختر مثل gpt-3.5-turbo أو gpt-4.1
+            "model": "mistralai/mistral-7b-instruct",  # موديل مجاني
             "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
             "temperature": 0.7,
             "max_tokens": 1000
