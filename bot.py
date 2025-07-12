@@ -1,9 +1,9 @@
-import json
-import re
 import os
 import asyncio
+import json
 import aiohttp
-from aiogram import Bot, Dispatcher, types, Router
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.enums import ParseMode
@@ -12,23 +12,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# إعدادات
 API_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHANNEL_USERNAME = "p2p_LRN"
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # مثال: https://yourapp.onrender.com
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 
-# تهيئة البوت
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# قراءة المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
@@ -62,7 +59,7 @@ async def is_subscribed(user_id: int):
     except:
         return False
 
-@router.message(commands=["start", "help"])
+@router.message(Command(commands=["start", "help"]))
 async def start_handler(msg: types.Message):
     if not await is_subscribed(msg.from_user.id):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -72,7 +69,7 @@ async def start_handler(msg: types.Message):
         return
     await msg.answer("👋 مرحبًا! اسألني أي شيء في الأمن السيبراني وسأجيبك + أرسل لك مصادر مفيدة.\n\nاستخدم /sources لعرض المصادر الكاملة.")
 
-@router.message(commands=["sources"])
+@router.message(Command(commands=["sources"]))
 async def show_sources(msg: types.Message):
     if not await is_subscribed(msg.from_user.id):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -131,7 +128,7 @@ async def main():
     await bot.set_webhook(WEBHOOK_URL)
     site = web.TCPSite(runner, WEBAPP_HOST, WEBAPP_PORT)
     await site.start()
-    print("🚀 Webhook is up!")
+    print("🚀 Webhook is up and running!")
 
 if __name__ == "__main__":
     asyncio.run(main())
