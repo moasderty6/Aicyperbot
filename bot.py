@@ -11,29 +11,33 @@ from aiohttp import web
 from dotenv import load_dotenv
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-# تحميل المتغيرات من .env
+# تحميل .env
 load_dotenv()
 
+# إعداد المتغيرات
 API_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHANNEL_USERNAME = "p2p_LRN"
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # مثال: https://yourapp.onrender.com
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 
-# إعداد البوت والراوتر
+# البوت
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# تحميل المصادر من JSON
+# جلسة aiohttp واحدة على مستوى التطبيق
+session: aiohttp.ClientSession = None
+
+# المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# كلمات مفتاحية لرصد المجال
+# تحليل الكلمات
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -104,34 +108,40 @@ async def answer_question(msg: types.Message):
     topic = find_topic(question)
 
     try:
-        async with aiohttp.ClientSession() as session:
-            headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
-            payload = {
-                "model": "gpt-4o",
-                "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
-                "temperature": 0.7
-            }
-            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as resp:
-                data = await resp.json()
-                answer = data["choices"][0]["message"]["content"]
+        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+        payload = {
+            "model": "gpt-4o",
+            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
+            "temperature": 0.7
+        }
+        async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as resp:
+            data = await resp.json()
+            answer = data["choices"][0]["message"]["content"]
 
-                response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
-                if topic and topic in sources_db:
-                    response += "📚 *مصادر مفيدة:*\n"
-                    for s in sources_db[topic]:
-                        response += f"- [{s['title']}]({s['url']})\n"
+            response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
+            if topic and topic in sources_db:
+                response += "📚 *مصادر مفيدة:*\n"
+                for s in sources_db[topic]:
+                    response += f"- [{s['title']}]({s['url']})\n"
 
-                await msg.answer(response)
+            await msg.answer(response)
 
     except Exception as e:
         await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
 
-async def main():
-    app = web.Application()
+async def on_shutdown(app: web.Application):
+    await session.close()
+    await bot.session.close()
 
-    # إعداد Webhook Handler
+async def main():
+    global session
+    session = aiohttp.ClientSession()
+
+    app = web.Application()
     SimpleRequestHandler(dispatcher=dp, bot=bot, webhook_path=WEBHOOK_PATH).register(app, WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
+
+    app.on_shutdown.append(on_shutdown)
 
     runner = web.AppRunner(app)
     await runner.setup()
