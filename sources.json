@@ -1,0 +1,56 @@
+{
+  "الاختراق الأخلاقي": [
+    {
+      "title": "OWASP Top 10 - أهم ثغرات الويب",
+      "url": "https://owasp.org/www-project-top-ten/"
+    },
+    {
+      "title": "دورة اختبار الاختراق الأخلاقي - freeCodeCamp",
+      "url": "https://www.freecodecamp.org/news/penetration-testing/"
+    },
+    {
+      "title": "كتاب تعلم الاختراق الأخلاقي (PDF)",
+      "url": "https://www.cybrary.it/learning-paths/ethical-hacking/"
+    }
+  ],
+  "البرمجة الآمنة": [
+    {
+      "title": "ممارسات البرمجة الآمنة - OWASP",
+      "url": "https://owasp.org/www-project-secure-coding-practices/"
+    },
+    {
+      "title": "Secure Coding Guidelines",
+      "url": "https://www.veracode.com/security/secure-coding"
+    }
+  ],
+  "التشفير": [
+    {
+      "title": "مقدمة في التشفير - ستانفورد",
+      "url": "https://crypto.stanford.edu/~dabo/cs255/"
+    },
+    {
+      "title": "دورة التشفير الشاملة",
+      "url": "https://www.coursera.org/learn/crypto"
+    }
+  ],
+  "الهندسة الاجتماعية": [
+    {
+      "title": "دليل الهندسة الاجتماعية - KnowBe4",
+      "url": "https://www.knowbe4.com/social-engineering"
+    },
+    {
+      "title": "مقدمة في الهندسة الاجتماعية",
+      "url": "https://www.sans.org/white-papers/348/"
+    }
+  ],
+  "البرمجيات الخبيثة": [
+    {
+      "title": "ما هي البرمجيات الخبيثة؟",
+      "url": "https://www.kaspersky.com/resource-center/threats/malware"
+    },
+    {
+      "title": "تحليل البرمجيات الخبيثة - SANS",
+      "url": "https://www.sans.org/white-papers/383/"
+    }
+  ]
+}
