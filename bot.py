@@ -2,29 +2,28 @@ import os
 import asyncio
 import json
 import aiohttp
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import Command
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.enums import ParseMode
-from aiogram.fsm.storage.memory import MemoryStorage
 from aiohttp import web
 from dotenv import load_dotenv
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-# تحميل .env
+# تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
 
-# إعداد المتغيرات
 API_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-CHANNEL_USERNAME = "p2p_LRN"
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # مثال: https://yourapp.onrender.com
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
+CHANNEL_USERNAME = "p2p_LRN"
 
-# البوت
+# إعداد البوت
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
@@ -33,11 +32,11 @@ dp.include_router(router)
 # جلسة aiohttp واحدة على مستوى التطبيق
 session: aiohttp.ClientSession = None
 
-# المصادر
+# تحميل المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# تحليل الكلمات
+# خريطة الكلمات المفتاحية
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -68,23 +67,24 @@ async def is_subscribed(user_id: int):
     except:
         return False
 
-@router.message(Command(commands=["start", "help"]))
+@router.message(Command("start"))
 async def start_handler(msg: types.Message):
     if not await is_subscribed(msg.from_user.id):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}")]
         ])
-        await msg.answer("يرجى الاشتراك في القناة أولاً لاستخدام البوت.", reply_markup=keyboard)
+        await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
-    await msg.answer("👋 مرحبًا! اسألني أي شيء في الأمن السيبراني وسأجيبك + أرسل لك مصادر مفيدة.\n\nاستخدم /sources لعرض المصادر الكاملة.")
 
-@router.message(Command(commands=["sources"]))
+    await msg.answer("👋 مرحبًا بك! أرسل سؤالك في مجال الأمن السيبراني وسأجيبك بمساعدة الذكاء الاصطناعي.\n\nاستخدم /sources للاطلاع على المصادر.")
+
+@router.message(Command("sources"))
 async def show_sources(msg: types.Message):
     if not await is_subscribed(msg.from_user.id):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}")]
         ])
-        await msg.answer("يرجى الاشتراك في القناة لاستخدام هذه الميزة.", reply_markup=keyboard)
+        await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام هذه الميزة.", reply_markup=keyboard)
         return
 
     response = "📚 *المصادر المتاحة:*\n\n"
@@ -93,15 +93,17 @@ async def show_sources(msg: types.Message):
         for s in srcs:
             response += f"- [{s['title']}]({s['url']})\n"
         response += "\n"
+
     await msg.answer(response)
 
 @router.message()
 async def answer_question(msg: types.Message):
+    global session
     if not await is_subscribed(msg.from_user.id):
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="اشترك في القناة", url=f"https://t.me/{CHANNEL_USERNAME}")]
         ])
-        await msg.answer("يرجى الاشتراك في القناة أولاً لاستخدام البوت.", reply_markup=keyboard)
+        await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
 
     question = msg.text.strip()
@@ -114,6 +116,7 @@ async def answer_question(msg: types.Message):
             "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
             "temperature": 0.7
         }
+
         async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as resp:
             data = await resp.json()
             answer = data["choices"][0]["message"]["content"]
@@ -129,8 +132,11 @@ async def answer_question(msg: types.Message):
     except Exception as e:
         await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
 
+# إغلاق الجلسة عند إغلاق السيرفر
 async def on_shutdown(app: web.Application):
-    await session.close()
+    global session
+    if session:
+        await session.close()
     await bot.session.close()
 
 async def main():
@@ -140,7 +146,6 @@ async def main():
     app = web.Application()
     SimpleRequestHandler(dispatcher=dp, bot=bot, webhook_path=WEBHOOK_PATH).register(app, WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
-
     app.on_shutdown.append(on_shutdown)
 
     runner = web.AppRunner(app)
