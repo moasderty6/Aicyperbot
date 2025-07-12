@@ -14,7 +14,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # هذا مفتاح OpenRouter
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST").rstrip("/")
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
@@ -29,6 +29,7 @@ dp.include_router(router)
 
 session: aiohttp.ClientSession = None
 
+# المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
@@ -103,16 +104,25 @@ async def handle_question(msg: types.Message):
     topic = find_topic(question)
 
     try:
-        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+        headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://t.me/p2p_LRN"  # يمكن تغييره لاسم بوتك
+        }
+
         payload = {
-            "model": "gpt-4.1",
+            "model": "openrouter/auto",  # يمكنك استبداله بـ gpt-4 أو nous-hermes أو أي موديل
             "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
             "temperature": 0.7
         }
 
-        async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as resp:
+        async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as resp:
             data = await resp.json()
-            answer = data["choices"][0]["message"]["content"]
+
+            if "choices" in data:
+                answer = data["choices"][0]["message"]["content"]
+            else:
+                raise Exception(data)
 
             response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
             if topic and topic in sources_db:
@@ -123,14 +133,16 @@ async def handle_question(msg: types.Message):
             await msg.answer(response)
 
     except Exception as e:
-        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
+        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`")
 
+# إغلاق الجلسات
 async def on_shutdown(app: web.Application):
     global session
     if session:
         await session.close()
     await bot.session.close()
 
+# Main
 async def main():
     global session
     session = aiohttp.ClientSession()
