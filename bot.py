@@ -17,7 +17,7 @@ load_dotenv()
 API_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 CHANNEL_USERNAME = "p2p_LRN"
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # مثال: https://yourapp.onrender.com
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
@@ -29,11 +29,11 @@ dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
-# تحميل قاعدة بيانات المصادر
+# تحميل المصادر من JSON
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# كلمات مفتاحية لرصد نوع السؤال
+# كلمات مفتاحية لرصد المجال
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -102,6 +102,7 @@ async def answer_question(msg: types.Message):
 
     question = msg.text.strip()
     topic = find_topic(question)
+
     try:
         async with aiohttp.ClientSession() as session:
             headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
@@ -113,17 +114,17 @@ async def answer_question(msg: types.Message):
             async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload) as resp:
                 data = await resp.json()
                 answer = data["choices"][0]["message"]["content"]
+
+                response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
+                if topic and topic in sources_db:
+                    response += "📚 *مصادر مفيدة:*\n"
+                    for s in sources_db[topic]:
+                        response += f"- [{s['title']}]({s['url']})\n"
+
+                await msg.answer(response)
+
     except Exception as e:
-        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI: {e}")
-        return
-
-    response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
-    if topic and topic in sources_db:
-        response += "📚 *مصادر مفيدة:*\n"
-        for s in sources_db[topic]:
-            response += f"- [{s['title']}]({s['url']})\n"
-
-    await msg.answer(response)
+        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenAI:\n`{e}`")
 
 async def main():
     app = web.Application()
@@ -132,13 +133,11 @@ async def main():
     SimpleRequestHandler(dispatcher=dp, bot=bot, webhook_path=WEBHOOK_PATH).register(app, WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
 
-    # تشغيل السيرفر
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, WEBAPP_HOST, WEBAPP_PORT)
     await site.start()
 
-    # تفعيل Webhook
     await bot.set_webhook(WEBHOOK_URL)
     print(f"✅ Webhook شغال على: {WEBHOOK_URL}")
 
