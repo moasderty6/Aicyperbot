@@ -5,11 +5,13 @@ import aiohttp
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.enums import ParseMode
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiohttp import web
 from dotenv import load_dotenv
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
+# تحميل المتغيرات من .env
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
@@ -21,14 +23,17 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 
+# إعداد البوت والراوتر
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
 
+# تحميل قاعدة بيانات المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
+# كلمات مفتاحية لرصد نوع السؤال
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -122,13 +127,20 @@ async def answer_question(msg: types.Message):
 
 async def main():
     app = web.Application()
-    app.router.add_post(WEBHOOK_PATH, dp.as_handler())
+
+    # إعداد Webhook Handler
+    SimpleRequestHandler(dispatcher=dp, bot=bot, webhook_path=WEBHOOK_PATH).register(app, WEBHOOK_PATH)
+    setup_application(app, dp, bot=bot)
+
+    # تشغيل السيرفر
     runner = web.AppRunner(app)
     await runner.setup()
-    await bot.set_webhook(WEBHOOK_URL)
     site = web.TCPSite(runner, WEBAPP_HOST, WEBAPP_PORT)
     await site.start()
-    print("🚀 Webhook is up and running!")
+
+    # تفعيل Webhook
+    await bot.set_webhook(WEBHOOK_URL)
+    print(f"✅ Webhook شغال على: {WEBHOOK_URL}")
 
 if __name__ == "__main__":
     asyncio.run(main())
