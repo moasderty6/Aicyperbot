@@ -105,13 +105,15 @@ async def handle_question(msg: types.Message):
     try:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "HTTP-Referer": "https://t.me/p2p_LRN",
+            "X-Title": "CyberBot"
         }
 
         payload = {
-            "model": "mistralai/mistral-7b-instruct",  # موديل مجاني
-            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي عن: {question}"}],
+            "model": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
             "temperature": 0.7,
-            "max_tokens": 1000
+            "max_tokens": 2048
         }
 
         async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as resp:
