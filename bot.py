@@ -2,6 +2,7 @@ import os
 import json
 import aiohttp
 import asyncio
+import re
 from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
@@ -54,6 +55,10 @@ def find_topic(text: str):
         if keyword in text:
             return topic
     return None
+
+def clean_response(text: str) -> str:
+    # حذف وسوم <think> الداخلية من النموذج
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 async def is_subscribed(user_id: int) -> bool:
     try:
@@ -128,7 +133,8 @@ async def handle_question(msg: types.Message):
             if "choices" not in data:
                 raise Exception(data)
 
-            answer = data["choices"][0]["message"]["content"]
+            raw_answer = data["choices"][0]["message"]["content"]
+            answer = clean_response(raw_answer)
 
             response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
             if topic and topic in sources_db:
