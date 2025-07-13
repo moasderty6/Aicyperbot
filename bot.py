@@ -14,6 +14,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST").rstrip("/")
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
@@ -21,9 +22,8 @@ WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 CHANNEL_USERNAME = "p2p_LRN"
 
-GROQ_API_KEY = "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"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "mixtral-8x7b-32768"
+GROQ_MODEL = "qwen/qwen3-32b"
 
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -32,9 +32,11 @@ dp.include_router(router)
 
 session: aiohttp.ClientSession = None
 
+# تحميل مصادر خارجية من ملف JSON
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
+# خريطة الكلمات المفتاحية حسب الموضوع
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
     "penetration": "الاختراق الأخلاقي",
@@ -104,20 +106,17 @@ async def handle_question(msg: types.Message):
 
     question = msg.text.strip()
     topic = find_topic(question)
-
-    # رسالة انتظار
-    waiting = await msg.answer("🧠 جارٍ التفكير لإعطائك أفضل إجابة...")
+    waiting = await msg.answer("⏳ جاري توليد إجابة مفصلة باستخدام الذكاء الاصطناعي...")
 
     try:
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
-
         payload = {
             "model": GROQ_MODEL,
             "messages": [
-                {"role": "system", "content": "أجب كمساعد خبير في الأمن السيبراني بأسلوب تعليمي مفصل."},
+                {"role": "system", "content": "أجب كمساعد خبير بالأمن السيبراني، واجعل الإجابة طويلة، واضحة، مفصلة، وعلمية."},
                 {"role": "user", "content": question}
             ],
             "temperature": 0.7,
@@ -128,16 +127,15 @@ async def handle_question(msg: types.Message):
             data = await resp.json()
             if "choices" not in data:
                 raise Exception(data)
+            answer = data["choices"][0]["message"]["content"].strip()
 
-            answer = data["choices"][0]["message"]["content"]
-            response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
+        response = f"💡 *الإجابة:*\n{answer}\n\n"
+        if topic and topic in sources_db:
+            response += "📚 *مصادر مفيدة:*\n"
+            for item in sources_db[topic]:
+                response += f"- [{item['title']}]({item['url']})\n"
 
-            if topic and topic in sources_db:
-                response += "📚 *مصادر مفيدة:*\n"
-                for item in sources_db[topic]:
-                    response += f"- [{item['title']}]({item['url']})\n"
-
-            await waiting.edit_text(response)
+        await waiting.edit_text(response)
 
     except Exception as e:
         await waiting.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ Groq:\n`{e}`")
