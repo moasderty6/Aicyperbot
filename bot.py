@@ -10,10 +10,12 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-# إعداد البوت
-API_TOKEN = "ضع توكن البوت هنا"
+# توكن البوت وتوكن Groq
+API_TOKEN = "7608345102:AAHoE4upOBiOWaVBrcqR33S1KcjRo_fp5Qg"
 GROQ_API_KEY = "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"
-WEBHOOK_HOST = "https://yourrenderurl.onrender.com"  # عدّل هذا حسب رابط مشروعك
+GROQ_MODEL = "qwen/qwen3-32b"
+
+WEBHOOK_HOST = "https://aicyperbot.onrender.com"
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
@@ -24,20 +26,26 @@ bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
+
 session: aiohttp.ClientSession = None
 
-# تحميل المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# كلمات مفتاحية لتحديد المجال
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
-    "تشفير": "التشفير",
-    "هندسة اجتماعية": "الهندسة الاجتماعية",
-    "فيروس": "البرمجيات الخبيثة",
+    "penetration": "الاختراق الأخلاقي",
+    "هاكر": "الاختراق الأخلاقي",
+    "اختبار": "الاختراق الأخلاقي",
     "برمجة آمنة": "البرمجة الآمنة",
-    "malware": "البرمجيات الخبيثة"
+    "secure coding": "البرمجة الآمنة",
+    "تشفير": "التشفير",
+    "cryptography": "التشفير",
+    "هندسة اجتماعية": "الهندسة الاجتماعية",
+    "social engineering": "الهندسة الاجتماعية",
+    "فيروس": "البرمجيات الخبيثة",
+    "malware": "البرمجيات الخبيثة",
+    "keylogger": "البرمجيات الخبيثة"
 }
 
 def find_topic(text: str):
@@ -91,10 +99,10 @@ async def handle_question(msg: types.Message):
         await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
 
-    waiting_message = await msg.answer("⏳ *يتم الآن توليد أفضل إجابة لك...*\nالرجاء الانتظار لحظات.", parse_mode="Markdown")
-
     question = msg.text.strip()
     topic = find_topic(question)
+
+    wait_message = await msg.answer("⏳ جاري إعداد إجابة مفصلة باستخدام الذكاء الاصطناعي...")
 
     try:
         headers = {
@@ -103,8 +111,10 @@ async def handle_question(msg: types.Message):
         }
 
         payload = {
-            "model": "qwen/qwen3-32b",
-            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "user", "content": f"أجب بشكل تعليمي، احترافي ومفصل عن السؤال التالي باللغة العربية:\n\n{question}"}
+            ],
             "temperature": 0.7,
             "max_tokens": 2048
         }
@@ -123,10 +133,10 @@ async def handle_question(msg: types.Message):
                 for item in sources_db[topic]:
                     response += f"- [{item['title']}]({item['url']})\n"
 
-            await waiting_message.edit_text(response)
+            await wait_message.edit_text(response)
 
     except Exception as e:
-        await waiting_message.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ Groq:\n`{e}`", parse_mode="Markdown")
+        await wait_message.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ Groq:\n`{e}`")
 
 async def on_shutdown(app: web.Application):
     global session
