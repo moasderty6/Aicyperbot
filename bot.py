@@ -87,7 +87,10 @@ async def cmd_sources(msg: types.Message):
         for item in links:
             response += f"- [{item['title']}]({item['url']})\n"
         response += "\n"
-    await msg.answer(response)
+    # إرسال الرد مقسّمًا على عدّة رسائل إذا تجاوز الحد المسموح
+max_length = 4000
+for i in range(0, len(response), max_length):
+    await msg.answer(response[i:i+max_length])
 
 @router.message()
 async def handle_question(msg: types.Message):
