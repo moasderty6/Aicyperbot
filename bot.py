@@ -3,7 +3,6 @@ import json
 import aiohttp
 import asyncio
 from aiohttp import web
-from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
@@ -11,46 +10,34 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-load_dotenv()
-
-API_TOKEN = os.getenv("BOT_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST").rstrip("/")
+# إعداد البوت
+API_TOKEN = "ضع توكن البوت هنا"
+GROQ_API_KEY = "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"
+WEBHOOK_HOST = "https://yourrenderurl.onrender.com"  # عدّل هذا حسب رابط مشروعك
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 WEBAPP_HOST = "0.0.0.0"
 WEBAPP_PORT = int(os.getenv("PORT", 3000))
 CHANNEL_USERNAME = "p2p_LRN"
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_MODEL = "qwen/qwen3-32b"
-
 bot = Bot(token=API_TOKEN, parse_mode=ParseMode.MARKDOWN)
 dp = Dispatcher(storage=MemoryStorage())
 router = Router()
 dp.include_router(router)
-
 session: aiohttp.ClientSession = None
 
-# تحميل مصادر خارجية من ملف JSON
+# تحميل المصادر
 with open('sources.json', encoding='utf-8') as f:
     sources_db = json.load(f)
 
-# خريطة الكلمات المفتاحية حسب الموضوع
+# كلمات مفتاحية لتحديد المجال
 keywords_map = {
     "اختراق": "الاختراق الأخلاقي",
-    "penetration": "الاختراق الأخلاقي",
-    "هاكر": "الاختراق الأخلاقي",
-    "اختبار": "الاختراق الأخلاقي",
-    "برمجة آمنة": "البرمجة الآمنة",
-    "secure coding": "البرمجة الآمنة",
     "تشفير": "التشفير",
-    "cryptography": "التشفير",
     "هندسة اجتماعية": "الهندسة الاجتماعية",
-    "social engineering": "الهندسة الاجتماعية",
     "فيروس": "البرمجيات الخبيثة",
-    "malware": "البرمجيات الخبيثة",
-    "keylogger": "البرمجيات الخبيثة"
+    "برمجة آمنة": "البرمجة الآمنة",
+    "malware": "البرمجيات الخبيثة"
 }
 
 def find_topic(text: str):
@@ -104,41 +91,42 @@ async def handle_question(msg: types.Message):
         await msg.answer("🔒 يجب الاشتراك في القناة لاستخدام البوت.", reply_markup=keyboard)
         return
 
+    waiting_message = await msg.answer("⏳ *يتم الآن توليد أفضل إجابة لك...*\nالرجاء الانتظار لحظات.", parse_mode="Markdown")
+
     question = msg.text.strip()
     topic = find_topic(question)
-    waiting = await msg.answer("⏳ جاري توليد إجابة مفصلة باستخدام الذكاء الاصطناعي...")
 
     try:
         headers = {
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
+
         payload = {
-            "model": GROQ_MODEL,
-            "messages": [
-                {"role": "system", "content": "أجب كمساعد خبير بالأمن السيبراني، واجعل الإجابة طويلة، واضحة، مفصلة، وعلمية."},
-                {"role": "user", "content": question}
-            ],
+            "model": "qwen/qwen3-32b",
+            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
             "temperature": 0.7,
             "max_tokens": 2048
         }
 
-        async with session.post(GROQ_API_URL, headers=headers, json=payload) as resp:
+        async with session.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload) as resp:
             data = await resp.json()
+
             if "choices" not in data:
                 raise Exception(data)
-            answer = data["choices"][0]["message"]["content"].strip()
 
-        response = f"💡 *الإجابة:*\n{answer}\n\n"
-        if topic and topic in sources_db:
-            response += "📚 *مصادر مفيدة:*\n"
-            for item in sources_db[topic]:
-                response += f"- [{item['title']}]({item['url']})\n"
+            answer = data["choices"][0]["message"]["content"]
 
-        await waiting.edit_text(response)
+            response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
+            if topic and topic in sources_db:
+                response += "📚 *مصادر مفيدة:*\n"
+                for item in sources_db[topic]:
+                    response += f"- [{item['title']}]({item['url']})\n"
+
+            await waiting_message.edit_text(response)
 
     except Exception as e:
-        await waiting.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ Groq:\n`{e}`")
+        await waiting_message.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ Groq:\n`{e}`", parse_mode="Markdown")
 
 async def on_shutdown(app: web.Application):
     global session
