@@ -89,23 +89,6 @@ async def cmd_sources(msg: types.Message):
         response += "\n"
     await msg.answer(response)
 
-async def ask_openrouter(question, model="cognitivecomputations/dolphin-mistral-24b-venice-edition:free"):
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "https://t.me/p2p_LRN",
-        "X-Title": "CyberBot"
-    }
-    payload = {
-        "model": model,
-        "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
-        "temperature": 0.7,
-        "max_tokens": 2048
-    }
-
-    async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as resp:
-        data = await resp.json()
-        return data, resp.status
-
 @router.message()
 async def handle_question(msg: types.Message):
     global session
@@ -119,31 +102,40 @@ async def handle_question(msg: types.Message):
     question = msg.text.strip()
     topic = find_topic(question)
 
-    waiting_msg = await msg.answer("⏳ *جارٍ توليد أفضل إجابة ممكنة...*\nيرجى الانتظار لبضع ثوانٍ.", parse_mode="Markdown")
-
     try:
-        # جرّب أولًا Venice
-        data, status = await ask_openrouter(question)
+        wait_msg = await msg.answer("⏳ يرجى الانتظار قليلاً بينما أبحث لك عن أفضل إجابة...")
 
-        # إذا كان هناك حظر مؤقت، جرّب نموذج آخر
-        if status == 429 or "choices" not in data:
-            data, status = await ask_openrouter(question, model="mistralai/mistral-7b-instruct:free")
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "HTTP-Referer": "https://t.me/p2p_LRN",
+            "X-Title": "CyberBot"
+        }
 
-        if "choices" not in data:
-            raise Exception(data)
+        payload = {
+            "model": "google/gemma-3n-e2b-it:free",
+            "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
+            "temperature": 0.7,
+            "max_tokens": 2048
+        }
 
-        answer = data["choices"][0]["message"]["content"]
+        async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as resp:
+            data = await resp.json()
 
-        response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
-        if topic and topic in sources_db:
-            response += "📚 *مصادر مفيدة:*\n"
-            for item in sources_db[topic]:
-                response += f"- [{item['title']}]({item['url']})\n"
+            if "choices" not in data:
+                raise Exception(data)
 
-        await waiting_msg.edit_text(response, parse_mode="Markdown")
+            answer = data["choices"][0]["message"]["content"]
+
+            response = f"💡 *الإجابة:*\n{answer.strip()}\n\n"
+            if topic and topic in sources_db:
+                response += "📚 *مصادر مفيدة:*\n"
+                for item in sources_db[topic]:
+                    response += f"- [{item['title']}]({item['url']})\n"
+
+            await wait_msg.edit_text(response)
 
     except Exception as e:
-        await waiting_msg.edit_text(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`", parse_mode="Markdown")
+        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`")
 
 async def on_shutdown(app: web.Application):
     global session
