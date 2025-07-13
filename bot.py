@@ -14,7 +14,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 load_dotenv()
 
 API_TOKEN = os.getenv("BOT_TOKEN")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+APIDOG_API_KEY = os.getenv("APIDOG_API_KEY")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST").rstrip("/")
 WEBHOOK_PATH = f"/webhook/{API_TOKEN}"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
@@ -106,19 +106,18 @@ async def handle_question(msg: types.Message):
         wait_msg = await msg.answer("⏳ يرجى الانتظار قليلاً بينما أبحث لك عن أفضل إجابة...")
 
         headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "HTTP-Referer": "https://t.me/p2p_LRN",
-            "X-Title": "CyberBot"
+            "Authorization": f"Bearer {APIDOG_API_KEY}",
+            "Content-Type": "application/json"
         }
 
         payload = {
-            "model": "google/gemma-3n-e2b-it:free",
+            "model": "gpt-3.5-turbo",
             "messages": [{"role": "user", "content": f"أجب بشكل تعليمي ومفصل عن: {question}"}],
             "temperature": 0.7,
             "max_tokens": 2048
         }
 
-        async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload) as resp:
+        async with session.post("https://openai.apidog.com/v1/chat/completions", headers=headers, json=payload) as resp:
             data = await resp.json()
 
             if "choices" not in data:
@@ -135,7 +134,7 @@ async def handle_question(msg: types.Message):
             await wait_msg.edit_text(response)
 
     except Exception as e:
-        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ OpenRouter:\n`{e}`")
+        await msg.answer(f"❌ حدث خطأ أثناء الاتصال بـ Apidog:\n`{e}`")
 
 async def on_shutdown(app: web.Application):
     global session
