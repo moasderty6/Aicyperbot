@@ -1,17 +1,36 @@
 {
   "الاختراق الأخلاقي": [
-    {"title": "مقدمة في الاختراق الأخلاقي", "url": "https://example.com/hacking-intro"}
+    {
+      "title": "مقدمة في الاختراق الأخلاقي من Cybrary",
+      "url": "https://www.cybrary.it/course/ethical-hacking/"
+    },
+    {
+      "title": "دورة الاختراق الأخلاقي من EC-Council",
+      "url": "https://www.eccouncil.org/train-certify/certified-ethical-hacker-ceh/"
+    }
   ],
   "البرمجة الآمنة": [
-    {"title": "Secure Coding Handbook", "url": "https://example.com/secure-coding"}
+    {
+      "title": "OWASP Secure Coding Practices",
+      "url": "https://owasp.org/www-project-secure-coding-practices/"
+    }
   ],
   "التشفير": [
-    {"title": "Cryptography Basics", "url": "https://example.com/crypto"}
+    {
+      "title": "Introduction to Cryptography - Coursera",
+      "url": "https://www.coursera.org/learn/crypto"
+    }
   ],
   "الهندسة الاجتماعية": [
-    {"title": "Social Engineering Guide", "url": "https://example.com/social"}
+    {
+      "title": "Social Engineering: The Art of Human Hacking",
+      "url": "https://www.wiley.com/en-us/Social+Engineering%3A+The+Art+of+Human+Hacking-p-9780470639535"
+    }
   ],
   "البرمجيات الخبيثة": [
-    {"title": "Understanding Malware", "url": "https://example.com/malware"}
+    {
+      "title": "Understanding Malware Threats - IBM",
+      "url": "https://www.ibm.com/topics/malware"
+    }
   ]
 }
